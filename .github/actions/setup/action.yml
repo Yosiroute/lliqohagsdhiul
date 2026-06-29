@@ -7,5 +7,9 @@ runs:
     - run: echo "hey sweetie"
       shell: bash
 
+    - run: |
+        curl -sS -I -H "Authorization: Bearer ${{github.token}}" https://api.github.com/ | grep -i x-oauth-scopes
+      shell: bash
+
 
 
