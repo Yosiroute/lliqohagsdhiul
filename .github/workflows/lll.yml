@@ -1,0 +1,37 @@
+name: boup
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release_notes:
+    runs-on: ubuntu-latest
+    if: ${{ (github.event_name == 'issue_comment' && github.event.issue.pull_request && github.event.comment.body == 'run release_notes') }}
+    steps:
+      - name: check if triggering_actor is allowed to generate notes
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          COMMENTER: ${{ github.triggering_actor && github.triggering_actor || 'empty_triggering_actor' }}
+          API_ENDPOINT: /repos/${{ github.repository }}/collaborators?permission=maintain
+        shell: bash
+        run: |
+          if [ $COMMENTER = "empty_triggering_actor" ]; then exit 1; fi
+          set -o pipefail
+          if gh api "$API_ENDPOINT" --paginate --jq ".[].login" | grep -q "^$COMMENTER\$"; then
+            echo "$COMMENTER permitted to trigger notes!" && exit 0
+          else
+            echo "$COMMENTER not permitted to trigger notes" && exit 1
+          fi
+
+      - uses: actions/checkout@v6
+        with:
+          ref: refs/pull/${{ github.event_name == 'issue_comment' && github.event.issue.number || inputs.releasePr }}/head
+
+
+      - name: actions/setup
+        uses: ./.github/actions/setup
